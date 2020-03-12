@@ -117,9 +117,9 @@ class Page(DjangoObjectType):
         interfaces = (PageInterface,)
 
 
-def get_specific_page(id, slug, url, token, content_type=None):
+def get_specific_page(id=None, slug=None, url=None, token=None, content_type=None):
     """
-    Get a spcecific page, also get preview if token is passed
+    Get a specific page, also get preview if token is passed
     """
     page = None
     try:
@@ -130,13 +130,13 @@ def get_specific_page(id, slug, url, token, content_type=None):
         elif slug:
             page = pages.get(slug=slug)
         elif url:
-            for matching_page in pages.filter(url_path__contains=url):
-                if matching_page.url.strip("/") == url.strip("/"):
-                    page = matching_page
-                    break
+            pages = pages.filter(url_path__contains=url.lstrip("/"))
+            if pages.exists():
+                page = pages.first()
 
         # Get specfic model instead of base page
-        page = page.specific
+        if page:
+            page = page.specific
 
         # If token provided then get draft/preview
         if token:
@@ -151,6 +151,7 @@ def get_specific_page(id, slug, url, token, content_type=None):
                 cls = mdl.model_class()
                 if hasattr(cls, "get_page_from_preview_token"):
                     page = cls.get_page_from_preview_token(token)
+
     except BaseException:
         page = None
 
@@ -180,13 +181,7 @@ def PagesQuery():
 
         # Return a specific page, identified by ID or Slug.
         def resolve_page(self, info, **kwargs):
-            return get_specific_page(
-                id=kwargs.get("id"),
-                slug=kwargs.get("slug"),
-                url=kwargs.get("url"),
-                token=kwargs.get("token"),
-                content_type=kwargs.get("content_type"),
-            )
+            return get_specific_page(**kwargs)
 
     return Mixin
 
@@ -202,9 +197,9 @@ def on_updated(sender, token, **kwargs):
 
 # Subscription Mixin
 def PagesSubscription():
-    def preview_observable(id, slug, token, content_type):
+    def preview_observable(token, **kwargs):
         return preview_subject.filter(lambda previewToken: previewToken == token).map(
-            lambda token: get_specific_page(id, slug, token, content_type)
+            lambda token: get_specific_page(token, **kwargs)
         )
 
     class Mixin:
@@ -217,11 +212,6 @@ def PagesSubscription():
         )
 
         def resolve_page(self, info, **kwargs):
-            return preview_observable(
-                id=kwargs.get("id"),
-                slug=kwargs.get("slug"),
-                token=kwargs.get("token"),
-                content_type=kwargs.get("content_type"),
-            )
+            return preview_observable(**kwargs)
 
     return Mixin
