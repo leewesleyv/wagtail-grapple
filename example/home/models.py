@@ -55,7 +55,7 @@ class BlogPage(HeadlessPreviewMixin, Page):
         on_delete=models.SET_NULL,
         related_name="+",
     )
-    cover = models.ForeignKey(
+    hero_image = models.ForeignKey(
         "images.CustomImage",
         null=True,
         blank=True,
@@ -83,7 +83,7 @@ class BlogPage(HeadlessPreviewMixin, Page):
 
     content_panels = Page.content_panels + [
         FieldPanel("date"),
-        ImageChooserPanel("cover"),
+        ImageChooserPanel("hero_image"),
         StreamFieldPanel("body"),
         InlinePanel("related_links", label="Related links"),
         InlinePanel("authors", label="Authors"),
@@ -107,7 +107,7 @@ class BlogPage(HeadlessPreviewMixin, Page):
         GraphQLCollection(GraphQLString, "related_urls", source="related_links.url"),
         GraphQLCollection(GraphQLString, "authors", source="authors.person.name"),
         GraphQLSnippet("advert", "home.Advert"),
-        GraphQLImage("cover"),
+        GraphQLImage("hero_image"),
         GraphQLDocument("book_file"),
         GraphQLMedia("featured_media"),
         GraphQLForeignKey("copy", "home.BlogPage"),
